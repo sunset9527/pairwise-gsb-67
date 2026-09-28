@@ -441,9 +441,22 @@ Trie.prototype = {
         var node = this.cache[ this.cache.length - 1 ];
 
         for( i = commonPrefix; i < word.length; i++ ) {
-            var next = new TrieNode( word[i] );
-            this.nodeCount++;
-            node.children.push( next );
+            // Reuse an existing child with the same letter, if any. Words do
+            // not have to be inserted in alphabetical order: without this
+            // check, out-of-order inserts would create duplicate "shadow"
+            // branches that lookup() cannot traverse, silently losing words.
+            var next = null;
+            for( var j = 0; j < node.children.length; j++ ) {
+                if ( node.children[j].letter === word[i] ) {
+                    next = node.children[j];
+                    break;
+                }
+            }
+            if ( next === null ) {
+                next = new TrieNode( word[i] );
+                this.nodeCount++;
+                node.children.push( next );
+            }
             this.cache.push( next );
             node = next;
         }
@@ -621,4 +634,11 @@ FrozenTrie.prototype = {
 
 if ( typeof exports !== "undefined" ) {
 	exports.FrozenTrie = FrozenTrie;
+	exports.Trie = Trie;
+	exports.TrieNode = TrieNode;
+	exports.BitWriter = BitWriter;
+	exports.BitString = BitString;
+	exports.RankDirectory = RankDirectory;
+	exports.L1 = L1;
+	exports.L2 = L2;
 }
