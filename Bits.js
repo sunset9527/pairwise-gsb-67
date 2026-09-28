@@ -428,23 +428,43 @@ Trie.prototype = {
       inserted in alphabetical order.
      */
     insert: function( word ) {      
+        // Walk from the root for every word, reusing any child that already
+        // carries the letter. The previous implementation reused a cached path
+        // based on the common prefix with the previously inserted word; that is
+        // only valid when words arrive in sorted order. When a word shared a
+        // prefix with an earlier (but non-adjacent) word, the cache was
+        // truncated at the wrong node and a duplicate "shadow" child was pushed
+        // on. Lookup then descended into the first shadow and silently failed to
+        // find words.
+        //
+        // Children are kept sorted by letter so that a given word set always
+        // produces the same tree (and identical encoded output), independent of
+        // insertion order.
+        var node = this.root;
 
-        var commonPrefix = 0;
-        for( var i = 0; i < Math.min( word.length, this.previousWord.length );
-                i++ )
-        {
-            if ( word[i] !== this.previousWord[i] ) { break; }
-            commonPrefix += 1;
-        }
+        for( var i = 0; i < word.length; i++ ) {
+            var letter = word[i];
 
-        this.cache.length = commonPrefix + 1;
-        var node = this.cache[ this.cache.length - 1 ];
+            var low = 0, high = node.children.length;
+            while ( low < high ) {
+                var mid = ( low + high ) >> 1;
+                if ( node.children[mid].letter < letter ) {
+                    low = mid + 1;
+                } else {
+                    high = mid;
+                }
+            }
 
-        for( i = commonPrefix; i < word.length; i++ ) {
-            var next = new TrieNode( word[i] );
-            this.nodeCount++;
-            node.children.push( next );
-            this.cache.push( next );
+            var next;
+            if ( low < node.children.length &&
+                    node.children[low].letter === letter ) {
+                next = node.children[low];
+            } else {
+                next = new TrieNode( letter );
+                this.nodeCount++;
+                node.children.splice( low, 0, next );
+            }
+
             node = next;
         }
 
@@ -621,4 +641,6 @@ FrozenTrie.prototype = {
 
 if ( typeof exports !== "undefined" ) {
 	exports.FrozenTrie = FrozenTrie;
+	exports.Trie = Trie;
+	exports.RankDirectory = RankDirectory;
 }
